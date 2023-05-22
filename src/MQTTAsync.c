@@ -683,6 +683,7 @@ int MQTTAsync_connect(MQTTAsync handle, const MQTTAsync_connectOptions* options)
 		free(m->c->will);
 		m->c->will = NULL;
 	}
+	
 
 	if (options->will && (options->will->struct_version == 0 || options->will->struct_version == 1))
 	{
@@ -742,6 +743,7 @@ int MQTTAsync_connect(MQTTAsync handle, const MQTTAsync_connectOptions* options)
 		}
 		free((void*)m->c->sslopts);
 		m->c->sslopts = NULL;
+		m->c->sslopts->kyber_version = 0;
 	}
 
 	if (options->struct_version != 0 && options->ssl)
@@ -788,6 +790,7 @@ int MQTTAsync_connect(MQTTAsync handle, const MQTTAsync_connectOptions* options)
 			m->c->sslopts->protos = options->ssl->protos;
 			m->c->sslopts->protos_len = options->ssl->protos_len;
 		}
+		m->c->sslopts->kyber_version = options->ssl->kyber_version;
 	}
 #else
 	if (options->struct_version != 0 && options->ssl)

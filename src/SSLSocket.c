@@ -690,6 +690,32 @@ int SSLSocket_createContext(networkHandles* net, MQTTClient_SSLOptions* opts)
 
 	SSL_CTX_set_mode(net->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 
+	if (opts->kyber_version != 0) {
+		switch(opts->kyber_version) {
+			case 1:
+				SSL_CTX_set1_groups_list(net->ctx, "kyber512");
+				printf("Setting kyber 512");
+				break;
+			case 2:
+				SSL_CTX_set1_groups_list(net->ctx, "kyber768");
+				printf("Setting kyber 768");
+				break;
+			case 3:
+				SSL_CTX_set1_groups_list(net->ctx, "kyber1024");
+				printf("Setting kyber 1024");
+				break;
+			default:
+				SSL_CTX_set1_groups_list(net->ctx, "kyber768");
+				break;
+		}
+
+	}
+
+	if (opts->sslVersion == MQTT_SSL_VERSION_TLS_1_3) {
+		SSL_CTX_set_min_proto_version(net->ctx, TLS1_3_VERSION);
+		SSL_CTX_set_max_proto_version(net->ctx, TLS1_3_VERSION);
+	}
+
 	goto exit;
 free_ctx:
 	SSL_CTX_free(net->ctx);
@@ -717,7 +743,6 @@ int SSLSocket_setSocketForSSL(networkHandles* net, MQTTClient_SSLOptions* opts,
 		SSL_CTX_set_msg_callback(net->ctx, SSL_CTX_msg_callback);
    		if (opts->enableServerCertAuth)
 			SSL_CTX_set_verify(net->ctx, SSL_VERIFY_PEER, NULL);
-
 		net->ssl = SSL_new(net->ctx);
 
 		/* Log all ciphers available to the SSL sessions (loaded in ctx) */
@@ -1031,7 +1056,7 @@ int SSLSocket_putdatas(SSL* ssl, int socket, char* buf0, size_t buf0len, PacketB
 		    	free(bufs.buffers[i]);
 		    	bufs.buffers[i] = NULL;
 		    }
-		}	
+		}
 	}
 exit:
 	FUNC_EXIT_RC(rc);
