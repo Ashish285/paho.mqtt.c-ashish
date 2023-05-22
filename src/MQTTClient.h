@@ -643,6 +643,7 @@ typedef struct
 #define MQTT_SSL_VERSION_TLS_1_0 1
 #define MQTT_SSL_VERSION_TLS_1_1 2
 #define MQTT_SSL_VERSION_TLS_1_2 3
+#define MQTT_SSL_VERSION_TLS_1_3 4
 
 /**
 * MQTTClient_sslProperties defines the settings to establish an SSL/TLS connection using the
@@ -765,6 +766,14 @@ typedef struct
 	 * Exists only if struct_version >= 5
 	 */
 	unsigned int protos_len;
+
+  /**
+   * 0 - disable kyber
+   * 1 - kyber 512
+   * 2 - kyber 768
+   * 3 - kyber 1024
+   */
+  unsigned int kyber_version;
 } MQTTClient_SSLOptions;
 
 #define MQTTClient_SSLOptions_initializer { {'M', 'Q', 'T', 'S'}, 5, NULL, NULL, NULL, NULL, NULL, 1, MQTT_SSL_VERSION_DEFAULT, 0, NULL, NULL, NULL, NULL, NULL, 0, NULL, 0 }

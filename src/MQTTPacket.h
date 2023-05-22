@@ -20,6 +20,7 @@
 
 #if !defined(MQTTPACKET_H)
 #define MQTTPACKET_H
+#include <stdbool.h>
 
 #include "Socket.h"
 #if defined(OPENSSL)
@@ -28,7 +29,7 @@
 #include "LinkedList.h"
 #include "Clients.h"
 
-typedef unsigned int bool;
+// typedef unsigned int bool;
 typedef void* (*pf)(int, unsigned char, char*, size_t);
 
 #include "MQTTProperties.h"

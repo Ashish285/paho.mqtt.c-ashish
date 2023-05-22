@@ -1017,6 +1017,7 @@ typedef struct
 #define MQTT_SSL_VERSION_TLS_1_0 1
 #define MQTT_SSL_VERSION_TLS_1_1 2
 #define MQTT_SSL_VERSION_TLS_1_2 3
+#define MQTT_SSL_VERSION_TLS_1_3 4
 
 /**
 * MQTTAsync_sslProperties defines the settings to establish an SSL/TLS connection using the
@@ -1139,6 +1140,8 @@ typedef struct
 	 * Exists only if struct_version >= 5
 	 */
 	unsigned int protos_len;
+
+  unsigned int kyber_version;
 } MQTTAsync_SSLOptions;
 
 #define MQTTAsync_SSLOptions_initializer { {'M', 'Q', 'T', 'S'}, 5, NULL, NULL, NULL, NULL, NULL, 1, MQTT_SSL_VERSION_DEFAULT, 0, NULL, NULL, NULL, NULL, NULL, 0, NULL, 0 }
