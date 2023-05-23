@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2020 IBM Corp.
+ * Copyright (c) 2009, 2023 IBM Corp., Ian Craggs
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v2.0
@@ -46,7 +46,7 @@
 
 extern Sockets mod_s;
 
-static int SSLSocket_error(char* aString, SSL* ssl, int sock, int rc, int (*cb)(const char *str, size_t len, void *u), void* u);
+static int SSLSocket_error(char* aString, SSL* ssl, SOCKET sock, int rc, int (*cb)(const char *str, size_t len, void *u), void* u);
 char* SSL_get_verify_result_string(int rc);
 void SSL_CTX_info_callback(const SSL* ssl, int where, int ret);
 char* SSLSocket_get_version_string(int version);
@@ -69,7 +69,7 @@ extern unsigned long SSLThread_id(void);
 extern void SSLLocks_callback(int mode, int n, const char *file, int line);
 int SSLSocket_createContext(networkHandles* net, MQTTClient_SSLOptions* opts);
 void SSLSocket_destroyContext(networkHandles* net);
-void SSLSocket_addPendingRead(int sock);
+void SSLSocket_addPendingRead(SOCKET sock);
 
 /* 1 ~ we are responsible for initializing openssl; 0 ~ openssl init is done externally */
 static int handle_openssl_init = 1;
@@ -94,7 +94,7 @@ static int tls_ex_index_ssl_opts;
  * @param u context to be passed as second argument to ERR_print_errors_cb
  * @return the specific TCP error code
  */
-static int SSLSocket_error(char* aString, SSL* ssl, int sock, int rc, int (*cb)(const char *str, size_t len, void *u), void* u)
+static int SSLSocket_error(char* aString, SSL* ssl, SOCKET sock, int rc, int (*cb)(const char *str, size_t len, void *u), void* u)
 {
     int error;
 
@@ -502,9 +502,9 @@ void SSLSocket_terminate(void)
 
 	if (handle_openssl_init)
 	{
-		EVP_cleanup();
-		ERR_free_strings();
 		CRYPTO_set_locking_callback(NULL);
+		ERR_free_strings();
+		EVP_cleanup();
 		if (sslLocks)
 		{
 			int i = 0;
@@ -593,6 +593,12 @@ int SSLSocket_createContext(networkHandles* net, MQTTClient_SSLOptions* opts)
 		}
 	}
 
+/*
+#if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+	SSL_CTX_set_security_level(net->ctx, 1);
+#endif
+*/
+
 	if (opts->keyStore)
 	{
 		if ((rc = SSL_CTX_use_certificate_chain_file(net->ctx, opts->keyStore)) != 1)
@@ -671,15 +677,20 @@ int SSLSocket_createContext(networkHandles* net, MQTTClient_SSLOptions* opts)
 #endif
 
 #if (OPENSSL_VERSION_NUMBER >= 0x010002000) /* 1.0.2 and later */
-	if (opts->protos != NULL && opts->protos_len > 0) {
-        if ((rc = SSL_CTX_set_alpn_protos(net->ctx, opts->protos, opts->protos_len)) != 0)
-        {
-            if (opts->struct_version >= 3)
-                SSLSocket_error("SSL_CTX_set_alpn_protos", NULL, net->socket, rc, opts->ssl_error_cb, opts->ssl_error_context);
-            else
-                SSLSocket_error("SSL_CTX_set_alpn_protos", NULL, net->socket, rc, NULL, NULL);
-            goto free_ctx;
-        }
+	if (opts->protos != NULL && opts->protos_len > 0)
+	{
+		/* SSL_CTX_set_alpn_protos() returns 0 on success as opposed to the other SSL functions,
+		   so we need to flip the meaning of rc or the return code will be wrong. */
+		if ((rc = SSL_CTX_set_alpn_protos(net->ctx, opts->protos, opts->protos_len)) != 0)
+		{
+			if (opts->struct_version >= 3)
+				SSLSocket_error("SSL_CTX_set_alpn_protos", NULL, net->socket, rc, opts->ssl_error_cb, opts->ssl_error_context);
+			else
+				SSLSocket_error("SSL_CTX_set_alpn_protos", NULL, net->socket, rc, NULL, NULL);
+			rc = 0; /* report an error according to the convention in other OpenSSL functions */
+			goto free_ctx;
+		}
+		rc = 1; /* report success according to the convention in other OpenSSL functions */
 	}
 #endif
 
@@ -748,7 +759,7 @@ int SSLSocket_setSocketForSSL(networkHandles* net, MQTTClient_SSLOptions* opts,
 				break;
 			Log(TRACE_PROTOCOL, 1, "SSL cipher available: %d:%s", i, cipher);
 		}
-		if ((rc = SSL_set_fd(net->ssl, net->socket)) != 1) {
+		if ((rc = (int)SSL_set_fd(net->ssl, (int)net->socket)) != 1) {
 			if (opts->struct_version >= 3)
 				SSLSocket_error("SSL_set_fd", net->ssl, net->socket, rc, opts->ssl_error_cb, opts->ssl_error_context);
 			else
@@ -777,7 +788,7 @@ int SSLSocket_setSocketForSSL(networkHandles* net, MQTTClient_SSLOptions* opts,
 /*
  * Return value: 1 - success, TCPSOCKET_INTERRUPTED - try again, anything else is failure
  */
-int SSLSocket_connect(SSL* ssl, int sock, const char* hostname, int verify, int (*cb)(const char *str, size_t len, void *u), void* u)
+int SSLSocket_connect(SSL* ssl, SOCKET sock, const char* hostname, int verify, int (*cb)(const char *str, size_t len, void *u), void* u)
 {
 	int rc = 0;
 
@@ -851,7 +862,7 @@ int SSLSocket_connect(SSL* ssl, int sock, const char* hostname, int verify, int 
  *  @param c the character read, returned
  *  @return completion code
  */
-int SSLSocket_getch(SSL* ssl, int socket, char* c)
+int SSLSocket_getch(SSL* ssl, SOCKET socket, char* c)
 {
 	int rc = SOCKET_ERROR;
 
@@ -891,7 +902,7 @@ exit:
  *  @param actual_len the actual number of bytes read
  *  @return completion code
  */
-char *SSLSocket_getdata(SSL* ssl, int socket, size_t bytes, size_t* actual_len, int* rc)
+char *SSLSocket_getdata(SSL* ssl, SOCKET socket, size_t bytes, size_t* actual_len, int* rc)
 {
 	char* buf;
 
@@ -904,23 +915,26 @@ char *SSLSocket_getdata(SSL* ssl, int socket, size_t bytes, size_t* actual_len, 
 
 	buf = SocketBuffer_getQueuedData(socket, bytes, actual_len);
 
-	ERR_clear_error();
-	if ((*rc = SSL_read(ssl, buf + (*actual_len), (int)(bytes - (*actual_len)))) < 0)
+	if (*actual_len != bytes)
 	{
-		*rc = SSLSocket_error("SSL_read - getdata", ssl, socket, *rc, NULL, NULL);
-		if (*rc != SSL_ERROR_WANT_READ && *rc != SSL_ERROR_WANT_WRITE)
+		ERR_clear_error();
+		if ((*rc = SSL_read(ssl, buf + (*actual_len), (int)(bytes - (*actual_len)))) < 0)
+		{
+			*rc = SSLSocket_error("SSL_read - getdata", ssl, socket, *rc, NULL, NULL);
+			if (*rc != SSL_ERROR_WANT_READ && *rc != SSL_ERROR_WANT_WRITE)
+			{
+				buf = NULL;
+				goto exit;
+			}
+		}
+		else if (*rc == 0) /* rc 0 means the other end closed the socket */
 		{
 			buf = NULL;
 			goto exit;
 		}
+		else
+			*actual_len += *rc;
 	}
-	else if (*rc == 0) /* rc 0 means the other end closed the socket */
-	{
-		buf = NULL;
-		goto exit;
-	}
-	else
-		*actual_len += *rc;
 
 	if (*actual_len == bytes)
 	{
@@ -976,7 +990,7 @@ int SSLSocket_close(networkHandles* net)
 
 
 /* No SSL_writev() provided by OpenSSL. Boo. */
-int SSLSocket_putdatas(SSL* ssl, int socket, char* buf0, size_t buf0len, PacketBuffers bufs)
+int SSLSocket_putdatas(SSL* ssl, SOCKET socket, char* buf0, size_t buf0len, PacketBuffers bufs)
 {
 	int rc = 0;
 	int i;
@@ -1016,7 +1030,7 @@ int SSLSocket_putdatas(SSL* ssl, int socket, char* buf0, size_t buf0len, PacketB
 
 		if (sslerror == SSL_ERROR_WANT_WRITE)
 		{
-			int* sockmem = (int*)malloc(sizeof(int));
+			SOCKET* sockmem = (SOCKET*)malloc(sizeof(SOCKET));
 			int free = 1;
 
 			if (!sockmem)
@@ -1030,7 +1044,9 @@ int SSLSocket_putdatas(SSL* ssl, int socket, char* buf0, size_t buf0len, PacketB
 			SocketBuffer_pendingWrite(socket, ssl, 1, &iovec, &free, iovec.iov_len, 0);
 			*sockmem = socket;
 			ListAppend(mod_s.write_pending, sockmem, sizeof(int));
+#if defined(USE_SELECT)
 			FD_SET(socket, &(mod_s.pending_wset));
+#endif
 			rc = TCPSOCKET_INTERRUPTED;
 		}
 		else
@@ -1059,12 +1075,12 @@ exit:
 }
 
 
-void SSLSocket_addPendingRead(int sock)
+void SSLSocket_addPendingRead(SOCKET sock)
 {
 	FUNC_ENTRY;
 	if (ListFindItem(&pending_reads, &sock, intcompare) == NULL) /* make sure we don't add the same socket twice */
 	{
-		int* psock = (int*)malloc(sizeof(sock));
+		SOCKET* psock = (SOCKET*)malloc(sizeof(SOCKET));
 		if (psock)
 		{
 			*psock = sock;
@@ -1078,9 +1094,9 @@ void SSLSocket_addPendingRead(int sock)
 }
 
 
-int SSLSocket_getPendingRead(void)
+SOCKET SSLSocket_getPendingRead(void)
 {
-	int sock = -1;
+	SOCKET sock = -1;
 
 	if (pending_reads.count > 0)
 	{
@@ -1110,6 +1126,17 @@ int SSLSocket_continueWrite(pending_writes* pw)
 		if (sslerror == SSL_ERROR_WANT_WRITE)
 			rc = 0; /* indicate we haven't finished writing the payload yet */
 	}
+	FUNC_EXIT_RC(rc);
+	return rc;
+}
+
+
+int SSLSocket_abortWrite(pending_writes* pw)
+{
+	int rc = 0;
+
+	FUNC_ENTRY;
+	free(pw->iovecs[0].iov_base);
 	FUNC_EXIT_RC(rc);
 	return rc;
 }

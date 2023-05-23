@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['unsuback_596',['Unsuback',['../structUnsuback.html',1,'']]]
+  ['willmessages_602',['willMessages',['../structwillMessages.html',1,'']]],
+  ['ws_5fframe_603',['ws_frame',['../structws__frame.html',1,'']]]
 ];
