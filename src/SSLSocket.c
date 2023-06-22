@@ -712,9 +712,12 @@ int SSLSocket_createContext(networkHandles* net, MQTTClient_SSLOptions* opts)
 				break;
 			default:
 				SSL_CTX_set1_groups_list(net->ctx, "kyber768");
+				printf("Setting kyber 1024");
 				break;
 		}
 
+	} else {
+		printf("Kyber not set");
 	}
 
 	if (opts->sslVersion == MQTT_SSL_VERSION_TLS_1_3) {
