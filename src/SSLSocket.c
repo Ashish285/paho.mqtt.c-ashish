@@ -700,19 +700,19 @@ int SSLSocket_createContext(networkHandles* net, MQTTClient_SSLOptions* opts)
 		switch(opts->kyber_version) {
 			case 1:
 				SSL_CTX_set1_groups_list(net->ctx, "kyber512");
-				printf("Setting kyber 512");
+				printf("Setting kyber 512\r\n");
 				break;
 			case 2:
 				SSL_CTX_set1_groups_list(net->ctx, "kyber768");
-				printf("Setting kyber 768");
+				printf("Setting kyber 768\r\n");
 				break;
 			case 3:
 				SSL_CTX_set1_groups_list(net->ctx, "kyber1024");
-				printf("Setting kyber 1024");
+				printf("Setting kyber 1024\r\n");
 				break;
 			default:
 				SSL_CTX_set1_groups_list(net->ctx, "kyber768");
-				printf("Setting kyber 1024");
+				printf("Setting default kyber 768\r\n");
 				break;
 		}
 
@@ -721,6 +721,7 @@ int SSLSocket_createContext(networkHandles* net, MQTTClient_SSLOptions* opts)
 	}
 
 	if (opts->sslVersion == MQTT_SSL_VERSION_TLS_1_3) {
+		printf("Setting SSL context to V1.3\r\n");
 		SSL_CTX_set_min_proto_version(net->ctx, TLS1_3_VERSION);
 		SSL_CTX_set_max_proto_version(net->ctx, TLS1_3_VERSION);
 	}
