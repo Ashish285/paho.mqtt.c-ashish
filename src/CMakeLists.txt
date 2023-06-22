@@ -194,10 +194,10 @@ IF (PAHO_WITH_SSL)
         ## common compilation for libpaho-mqtt3cs and libpaho-mqtt3as
     	## Note: SSL libraries must be recompiled due ifdefs
     	ADD_LIBRARY(common_ssl_obj OBJECT ${common_src})
-    	TARGET_INCLUDE_DIRECTORIES(common_ssl_obj PUBLIC ${OPENSSL_INCLUDE_DIR} <path_to_oqs_include>)
+    	TARGET_INCLUDE_DIRECTORIES(common_ssl_obj PUBLIC ${OPENSSL_INCLUDE_DIR})
     	SET_PROPERTY(TARGET common_ssl_obj PROPERTY	POSITION_INDEPENDENT_CODE ON)
     	SET_PROPERTY(TARGET common_ssl_obj PROPERTY COMPILE_DEFINITIONS "OPENSSL=1;PAHO_MQTT_EXPORTS=1")
-        TARGET_LINK_LIBRARIES(common_ssl_obj <path_to_oqs_libs>liboqs)
+        TARGET_LINK_LIBRARIES(common_ssl_obj)
         ADD_LIBRARY(paho-mqtt3cs SHARED $<TARGET_OBJECTS:common_ssl_obj> MQTTClient.c SSLSocket.c)
         ADD_LIBRARY(paho-mqtt3as SHARED $<TARGET_OBJECTS:common_ssl_obj> MQTTAsync.c MQTTAsyncUtils.c SSLSocket.c)
         SET_TARGET_PROPERTIES(
@@ -228,12 +228,11 @@ IF (PAHO_WITH_SSL)
                 PUBLIC
                     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
                     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-                    <path_to_oqs_include>
                 PRIVATE
                     ${CMAKE_BINARY_DIR})
             TARGET_LINK_LIBRARIES(${TARGET}
                 PUBLIC
-                    OpenSSL::SSL OpenSSL::Crypto ${LIBS_SYSTEM} <path_to_oqs_libs>liboqs.so)
+                    OpenSSL::SSL OpenSSL::Crypto ${LIBS_SYSTEM})
         ENDFOREACH()
         INSTALL(TARGETS paho-mqtt3cs paho-mqtt3as
             EXPORT eclipse-paho-mqtt-cTargets
@@ -246,10 +245,10 @@ IF (PAHO_WITH_SSL)
         ## common compilation for libpaho-mqtt3cs and libpaho-mqtt3as
     	## Note: SSL libraries must be recompiled due ifdefs
     	ADD_LIBRARY(common_ssl_obj_static OBJECT ${common_src})
-    	TARGET_INCLUDE_DIRECTORIES(common_ssl_obj_static PUBLIC ${OPENSSL_INCLUDE_DIR} <path_to_oqs_include>)
+    	TARGET_INCLUDE_DIRECTORIES(common_ssl_obj_static PUBLIC ${OPENSSL_INCLUDE_DIR})
     	SET_PROPERTY(TARGET common_ssl_obj_static PROPERTY POSITION_INDEPENDENT_CODE ON)
     	SET_PROPERTY(TARGET common_ssl_obj_static PROPERTY COMPILE_DEFINITIONS "OPENSSL=1;PAHO_MQTT_STATIC=1")
-        TARGET_LINK_LIBRARIES(common_ssl_obj_static <path_to_oqs_libs>liboqs)
+        TARGET_LINK_LIBRARIES(common_ssl_obj_static)
         ADD_LIBRARY(paho-mqtt3cs-static STATIC $<TARGET_OBJECTS:common_ssl_obj_static> MQTTClient.c SSLSocket.c)
         ADD_LIBRARY(paho-mqtt3as-static STATIC $<TARGET_OBJECTS:common_ssl_obj_static> MQTTAsync.c MQTTAsyncUtils.c SSLSocket.c)
 
